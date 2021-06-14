@@ -1,11 +1,13 @@
 const { Router } = require('express');
+const axios = require('axios');
 const { Recipe, Diet } = require('../db.js');
-
+const { KEY } = process.env;
+const {Op} = require('sequelize')
 
 const router = Router();
 
 router.post('/recipe', async(req, res) => {
-    const { name, summary, score, healthScore, instructions, image, mine } = req.body
+    const { name, summary, score, healthScore, instructions, diet } = req.body
 
     try {
         let newRecipe = await Recipe.create({
@@ -14,35 +16,87 @@ router.post('/recipe', async(req, res) => {
             score,
             healthScore,
             instructions,
-            image,
-            mine
         })
-
-        res.json(newRecipe);
+        await newRecipe.addDiet(diet);
+        res.json(newRecipe)
     } catch (err) {
         res.status(500).json(err);
     }
 })
 
+
 router.get('/recipes/:id', async(req, res) => {
-    let { id } = req.params
-    try {
-        let query = await Recipe.findByPk(id, {
+  
+        const {id} = req.params
+
+        let queryDB = await Recipe.findByPk(id, {
             include: { model: Diet },
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            through: {
-                attributes: [],
-            }
         });
-        if (query) {
-            res.json(query);
-        } else {
-            res.status(404).json('not found')
+
+        if(queryDB === null){
+
+            try{
+                
+                let recipesApi = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${KEY}`)
+
+                const objeto = {
+                        name: recipesApi.data.title,
+                        summary: recipesApi.data.summary,
+                        score: recipesApi.data.spoonacularScore,
+                        healthScore: recipesApi.data.healthScore,
+                        instructions: recipesApi.data.instructions,
+                    }
+        
+                    if (recipesApi)return res.send (objeto)
+            }
+            catch (err){
+                return res.send ('ID NOT FOUNT')
+            }
         }
-    } catch (err) {
-        res.status(500).json({ err })
+        return res.send ('ESTA LA INFO EN LA BASE DE DATOS')
+})
+
+
+router.get('/recipes', async (req ,res) =>{
+    try{
+        const {name} = req.query
+        let recipes = await Recipe.findAll();
+
+        if(recipes.length === 0){
+        recipes = await axios.get(`https://api.spoonacular.com/recipes/complexSearch?addRecipeInformation=true&apiKey=${KEY}&number=10`)
+
+        recipes = await recipes.data.results.map(async (obj)=>{
+            await Recipe.create({
+                name: obj.title,
+                summary: obj.summary,
+                score: obj.spoonacularScore,
+                healthScore: obj.healthScore,
+            })
+        })
     }
 
+    if(!name){
+        const x9recipes = await Recipe.findAll({
+            inlcude: {model: Diet},
+            limit: 10,
+            offset: 0,
+        })
+        res.json(x9recipes)
+    }else{
+        const matchRecipe = await Recipe.findAll({
+            include: {model: Diet},
+            where: {name: {[Op.iLike]: `%${name}%`},
+        }
+        })
+        if (matchRecipe.length === 0){
+            res.json({message: "LA RECETA NO EXISTE",})
+        }else{
+            res.json(matchRecipe)
+        }
+    }
+}catch (err) {
+    console.error(err.message)
+}
 })
 
 module.exports = router;

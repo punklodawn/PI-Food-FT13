@@ -8,9 +8,6 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
-        image: {
-            type: DataTypes.STRING,
-        },
 
         summary: {
             type: DataTypes.TEXT,
@@ -27,12 +24,6 @@ module.exports = (sequelize) => {
 
         instructions: {
             type: DataTypes.TEXT,
-        },
-
-        mine: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false,
         },
     });
 };
