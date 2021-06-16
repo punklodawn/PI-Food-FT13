@@ -25,5 +25,19 @@ module.exports = (sequelize) => {
         instructions: {
             type: DataTypes.TEXT,
         },
+
+        image: {
+            type: DataTypes.STRING,
+            allowNull: false,
+        }, 
+        
+        dietas: {
+            type: DataTypes.TEXT,
+        }, 
+        mine: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        }, 
     });
 };
